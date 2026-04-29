@@ -12,11 +12,12 @@ const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const isDesktop = window.matchMedia('(pointer: fine)').matches;
+const enableCustomCursor = false;
 
 /* ============================================================
    1. CUSTOM CURSOR (desktop only)
    ============================================================ */
-if (isDesktop && !prefersReducedMotion) {
+if (enableCustomCursor && isDesktop && !prefersReducedMotion) {
   const dot  = $('#cursor .cursor-dot');
   const ring = $('#cursor .cursor-ring');
 
@@ -78,13 +79,11 @@ if (isDesktop && !prefersReducedMotion) {
   if (!loader) return;
 
   const messages = [
-    { text: '$ initializing portfolio system...', cls: 'dim' },
-    { text: '✓ KERNEL loaded', cls: 'ok' },
-    { text: '✓ MODULE: cybersecurity.py', cls: 'ok' },
-    { text: '✓ MODULE: creative_tech.js', cls: 'ok' },
-    { text: '✓ MODULE: smart_hub_projects', cls: 'ok' },
-    { text: '✓ ASSETS: profile, projects, icons', cls: 'ok' },
-    { text: '$ launching portfolio...', cls: 'hl' },
+    { text: '$ preparing selected work...', cls: 'dim' },
+    { text: 'ok: security practice', cls: 'ok' },
+    { text: 'ok: product notes', cls: 'ok' },
+    { text: 'ok: visual systems', cls: 'ok' },
+    { text: '$ opening briefing...', cls: 'hl' },
   ];
 
   function hideLoader() {
@@ -138,7 +137,7 @@ if (isDesktop && !prefersReducedMotion) {
     if (progressFill) progressFill.style.width = progress + '%';
     if (progressPct)  progressPct.textContent   = progress + '%';
 
-    const delay = lineIndex === 1 ? 180 : 220 + Math.random() * 120;
+    const delay = lineIndex === 1 ? 120 : 150 + Math.random() * 70;
     setTimeout(addLine, delay);
   }
 
@@ -423,7 +422,7 @@ function revealHeroStagger() {
         form.reset();
         if (btn) {
           btn.disabled = false;
-          btn.querySelector('span').textContent = 'Send Message';
+          btn.querySelector('span').textContent = 'Send Note';
         }
         setTimeout(() => successMsg && successMsg.classList.remove('show'), 4000);
       }, 1000);
@@ -463,12 +462,13 @@ function revealHeroStagger() {
 
   // Commands
   const commands = {
-    help: () => `Available: <span class="t-hl">about</span> · <span class="t-hl">skills</span> · <span class="t-hl">projects</span> · <span class="t-hl">startup</span> · <span class="t-hl">contact</span> · <span class="t-hl">clear</span> · <span class="t-hl">whoami</span>`,
-    whoami: () => `<span class="t-hl">Ogundun MoyinJah M.</span> — Cybersecurity Student · Creative Technologist · Founder`,
+    help: () => `Available: <span class="t-hl">about</span> · <span class="t-hl">skills</span> · <span class="t-hl">projects</span> · <span class="t-hl">studio</span> · <span class="t-hl">contact</span> · <span class="t-hl">clear</span> · <span class="t-hl">whoami</span>`,
+    whoami: () => `<span class="t-hl">Ogundun MoyinJah M.</span> — frontend builder · Smart Hub Projects founder · visual systems`,
     about:    () => { scrollTo('about');    return `Navigating to <span class="t-hl">About</span>…`; },
     skills:   () => { scrollTo('skills');   return `Navigating to <span class="t-hl">Skills</span>…`; },
     projects: () => { scrollTo('projects'); return `Navigating to <span class="t-hl">Projects</span>…`; },
-    startup:  () => { scrollTo('startup');  return `Navigating to <span class="t-hl">Startup</span>…`; },
+    startup:  () => { scrollTo('startup');  return `Navigating to <span class="t-hl">Studio</span>…`; },
+    studio:   () => { scrollTo('startup');  return `Navigating to <span class="t-hl">Studio</span>…`; },
     contact:  () => { scrollTo('contact');  return `Navigating to <span class="t-hl">Contact</span>…`; },
     clear:    () => { output.innerHTML = ''; return null; },
   };
