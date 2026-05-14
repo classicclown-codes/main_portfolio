@@ -13,6 +13,7 @@ const $$ = (sel, ctx = document) => [...ctx.querySelectorAll(sel)];
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const isDesktop = window.matchMedia('(pointer: fine)').matches;
 const enableCustomCursor = false;
+const canUseAnime = () => window.anime && !prefersReducedMotion;
 
 /* ============================================================
    1. CUSTOM CURSOR (desktop only)
@@ -154,6 +155,30 @@ function revealHeroStagger() {
     heroReveals.forEach(el => el.classList.add('is-revealed'));
     return;
   }
+
+  if (canUseAnime()) {
+    heroReveals.forEach(el => el.classList.add('is-revealed'));
+    anime.set(heroReveals, { opacity: 0, translateY: 34, filter: 'blur(10px)' });
+    anime({
+      targets: heroReveals,
+      opacity: [0, 1],
+      translateY: [34, 0],
+      filter: ['blur(10px)', 'blur(0px)'],
+      duration: 880,
+      delay: anime.stagger(115),
+      easing: 'easeOutExpo',
+    });
+    anime({
+      targets: '.hero-stats .stat-card',
+      translateX: [18, 0],
+      opacity: [0, 1],
+      duration: 700,
+      delay: anime.stagger(90, { start: 420 }),
+      easing: 'easeOutCubic',
+    });
+    return;
+  }
+
   heroReveals.forEach((el, i) => {
     const delay = parseInt(el.dataset.delay || i, 10);
     setTimeout(() => el.classList.add('is-revealed'), delay * 120 + 60);
@@ -176,7 +201,21 @@ function revealHeroStagger() {
       if (!entry.isIntersecting) return;
       const el    = entry.target;
       const delay = parseInt(el.dataset.delay || 0, 10) * 80;
-      setTimeout(() => el.classList.add('is-revealed'), delay);
+      setTimeout(() => {
+        el.classList.add('is-revealed');
+        if (canUseAnime()) {
+          anime.remove(el);
+          anime.set(el, { opacity: 0, translateY: 26, filter: 'blur(8px)' });
+          anime({
+            targets: el,
+            opacity: [0, 1],
+            translateY: [26, 0],
+            filter: ['blur(8px)', 'blur(0px)'],
+            duration: 720,
+            easing: 'easeOutExpo',
+          });
+        }
+      }, delay);
       obs.unobserve(el);
     });
   }, { rootMargin: '0px 0px -6% 0px', threshold: 0.06 });
@@ -316,20 +355,45 @@ function revealHeroStagger() {
    ============================================================ */
 (function initModals() {
   const modals = $$('.modal');
+  const focusableSelector = 'button, a, input, textarea, select, [tabindex]:not([tabindex="-1"])';
+  let activeModal = null;
+  let lastFocusedElement = null;
+
+  function getFocusable(modal) {
+    return $$(focusableSelector, modal).filter(el => !el.disabled && el.offsetParent !== null);
+  }
 
   function openModal(modal) {
     if (!modal) return;
+    activeModal = modal;
+    lastFocusedElement = document.activeElement;
     modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
-    // Focus first focusable element
-    const focusable = modal.querySelector('button, a, input, textarea, [tabindex]');
-    setTimeout(() => focusable && focusable.focus(), 50);
+    if (canUseAnime()) {
+      const content = $('.modal-content', modal);
+      anime.remove(content);
+      anime({
+        targets: content,
+        opacity: [0, 1],
+        translateY: [28, 0],
+        scale: [0.96, 1],
+        duration: 420,
+        easing: 'easeOutExpo',
+      });
+    }
+    const focusable = getFocusable(modal);
+    setTimeout(() => (focusable[0] || modal).focus(), 50);
   }
 
-  function closeModal(modal) {
+  function closeModal(modal, restoreFocus = true) {
     if (!modal) return;
     modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
+    activeModal = null;
+    if (restoreFocus && lastFocusedElement && document.contains(lastFocusedElement)) {
+      lastFocusedElement.focus();
+    }
+    lastFocusedElement = null;
   }
 
   // Open triggers
@@ -350,12 +414,32 @@ function revealHeroStagger() {
     backdrop.addEventListener('click', () => closeModal(backdrop.closest('.modal')));
   });
 
-  // Escape key
   document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape') return;
-    modals.forEach(m => {
-      if (m.getAttribute('aria-hidden') === 'false') closeModal(m);
-    });
+    if (!activeModal) return;
+
+    if (e.key === 'Escape') {
+      closeModal(activeModal);
+      return;
+    }
+
+    if (e.key !== 'Tab') return;
+
+    const focusable = getFocusable(activeModal);
+    if (!focusable.length) {
+      e.preventDefault();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
   });
 })();
 
@@ -373,6 +457,7 @@ function revealHeroStagger() {
   const emailErr   = $('#email-error');
   const msgErr     = $('#message-error');
   const successMsg = $('#success-msg');
+  const contactEmail = 'classicclown-codes@users.noreply.github.com';
 
   const validators = {
     name:    v => v.trim().length >= 2  ? '' : 'Please enter your name (min 2 characters).',
@@ -410,22 +495,34 @@ function revealHeroStagger() {
     const v3 = validate(msgInput,   msgErr,   'message');
 
     if (v1 && v2 && v3) {
-      // Simulate send
       const btn = form.querySelector('.submit-btn');
       if (btn) {
         btn.disabled = true;
-        btn.querySelector('span').textContent = 'Sending…';
+        btn.querySelector('span').textContent = 'Opening Email';
       }
+
+      const subject = encodeURIComponent(`Portfolio inquiry from ${nameInput.value.trim()}`);
+      const body = encodeURIComponent([
+        `Hi MoyinJah,`,
+        ``,
+        `I found you through your portfolio and would like to talk about:`,
+        ``,
+        msgInput.value.trim(),
+        ``,
+        `From: ${nameInput.value.trim()}`,
+        `Reply email: ${emailInput.value.trim()}`,
+      ].join('\n'));
+
+      window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`;
 
       setTimeout(() => {
         if (successMsg) successMsg.classList.add('show');
-        form.reset();
         if (btn) {
           btn.disabled = false;
           btn.querySelector('span').textContent = 'Send Note';
         }
-        setTimeout(() => successMsg && successMsg.classList.remove('show'), 4000);
-      }, 1000);
+        setTimeout(() => successMsg && successMsg.classList.remove('show'), 5000);
+      }, 350);
     }
   });
 })();
@@ -444,11 +541,32 @@ function revealHeroStagger() {
 
   let isOpen = false;
 
+  function escapeHtml(value) {
+    return value.replace(/[&<>"']/g, char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    }[char]));
+  }
+
   function toggleTerminal(open) {
     isOpen = open;
     fab.setAttribute('aria-expanded', String(open));
     widget.setAttribute('aria-hidden', String(!open));
     widget.classList.toggle('terminal-open', open);
+    if (canUseAnime()) {
+      anime.remove(widget);
+      anime({
+        targets: widget,
+        opacity: open ? [0, 1] : [1, 0],
+        translateY: open ? [18, 0] : [0, 14],
+        scale: open ? [0.96, 1] : [1, 0.98],
+        duration: open ? 360 : 220,
+        easing: open ? 'easeOutExpo' : 'easeInCubic',
+      });
+    }
     if (open && input) setTimeout(() => input.focus(), 320);
   }
 
@@ -497,7 +615,7 @@ function revealHeroStagger() {
       if (!cmd) return;
 
       // Echo command
-      addLine(`<span class="t-prompt">visitor@portfolio:~$</span><span class="t-cmd"> ${cmd}</span>`);
+      addLine(`<span class="t-prompt">visitor@portfolio:~$</span><span class="t-cmd"> ${escapeHtml(cmd)}</span>`);
 
       // Execute
       if (commands[cmd]) {
@@ -506,7 +624,7 @@ function revealHeroStagger() {
           addLine(`<span class="t-response">${result}</span>`);
         }
       } else {
-        addLine(`<span class="t-error">command not found: ${cmd}. Type <span class="t-hl">help</span> for available commands.</span>`);
+        addLine(`<span class="t-error">command not found: ${escapeHtml(cmd)}. Type <span class="t-hl">help</span> for available commands.</span>`);
       }
 
       input.value = '';
